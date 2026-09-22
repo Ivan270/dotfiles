@@ -1,0 +1,23 @@
+{
+  "printWidth": 8,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "vueIndentScriptAndStyle": true,
+  "overrides": [
+    {
+      "files": [
+        "*.md",
+        "*.markdown",
+        "*.mdx"
+      ],
+      "options": {
+        "proseWrap": "preserve",
+        "tabWidth": 2,
+        "useTabs": false,
+        "embeddedLanguageFormatting": "auto",
+        "htmlWhitespaceSensitivity": "strict",
+        "trailingComma": "none"
+      }
+    }
+  ]
+}
