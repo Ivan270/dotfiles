@@ -1,0 +1,203 @@
+# Prompt compartido: macOS + Zsh + Ghostty / Fedora + Bash + Alacritty.
+# Fuente requerida en ambas terminales: JetBrains Mono Nerd Font.
+# Referencia: https://starship.rs/config/
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# Separa visualmente cada comando del anterior con una línea vacía.
+add_newline = true
+# Paleta propia para mantener los mismos colores sobre fondos oscuros.
+palette = 'discreta'
+
+# Orden de los módulos: cada línea terminada en \ se une a la siguiente.
+# Para quitar un módulo, elimina su variable de este formato.
+# $line_break inicia la segunda línea; $character indica dónde escribir.
+format = """
+$username\
+$hostname\
+${custom.location}\
+$git_branch\
+$git_commit\
+$git_state\
+$git_status\
+$nodejs\
+$python\
+$docker_context\
+$kubernetes\
+$cmd_duration\
+$line_break\
+$character"""
+
+# Hora a la derecha de la línea de entrada (no de la línea de contexto).
+# Zsh: soporte directo. Bash: requiere ble.sh >= 0.4 integrado con Starship.
+# https://starship.rs/advanced-config/#enable-right-prompt
+# Alternativa SIN ble.sh: usa right_format = '' y añade $time antes de
+# $line_break en format. Para alinearla a la derecha arriba, usa $fill$time.
+right_format = '$time'
+
+[palettes.discreta]
+# Texto secundario: hostname, versiones, contextos y reloj.
+muted = '#9299a8'
+# Acento principal: ruta y símbolo de entrada.
+accent = '#88c0d0'
+# Git limpio y texto principal secundario.
+text = '#c5cbd6'
+# Cambios pendientes y duración de comandos.
+warning = '#d8b675'
+# Conflictos/operaciones Git y usuario privilegiado.
+danger = '#e58a8a'
+
+[username]
+# Aparece en SSH, como root o si el usuario difiere del usuario de sesión.
+show_always = false
+# Se une al hostname: usuario@equipo.
+format = '[$user@]($style)'
+style_user = 'bold accent'
+style_root = 'bold danger'
+
+[hostname]
+# Siempre visible; cambia a true para verlo únicamente en SSH.
+ssh_only = false
+# Marca explícita de sesión remota, además del usuario resaltado.
+ssh_symbol = '󰣀 '
+format = '[$ssh_symbol$hostname]($style) '
+style = 'muted'
+# Quita el dominio del hostname para ahorrar espacio.
+trim_at = '.'
+
+[custom.location]
+# Ruta contextual; un shell POSIX funciona tanto en macOS como en Fedora.
+# El módulo directory nativo aplica el mismo límite dentro y fuera de Git.
+# Este bloque conserva TODA la ruta desde la raíz Git y limita solo fuera.
+when = true
+shell = ['sh']
+format = '[$output]($style) '
+style = 'bold accent'
+# No usa APIs de red ni modifica el repositorio; solo consulta su raíz.
+# Fuera de Git, sustituye el home por ~ y conserva los últimos tres niveles.
+# El candado indica que el directorio actual no permite escritura.
+command = """
+location=$(pwd -P)
+if repo=$(git rev-parse --show-toplevel 2>/dev/null); then
+    name=${repo##*/}
+    printf '%s' "$name${location#"$repo"}"
+else
+    case "$location" in
+        "$HOME") location='~' ;;
+        "$HOME"/*) location="~${location#"$HOME"}" ;;
+    esac
+    printf '%s\\n' "$location" | awk -F/ '{
+        if (NF > 3) printf "…/%s/%s/%s", $(NF-2), $(NF-1), $NF;
+        else printf "%s", $0;
+    }'
+fi
+if [ ! -w . ]; then printf ' 󰌾'; fi
+"""
+
+[git_branch]
+# Rama actual; el símbolo corresponde a Git en Nerd Fonts.
+symbol = ' '
+format = '[$symbol$branch]($style) '
+style = 'text'
+
+[git_commit]
+# Identifica el commit cuando HEAD está separado de una rama.
+only_detached = true
+commit_hash_length = 7
+format = '[@$hash]($style) '
+style = 'text'
+
+[git_state]
+# Operaciones pendientes: rebase, merge, cherry-pick, etc.; progreso si existe.
+format = '[$state( $progress_current/$progress_total)]($style) '
+style = 'bold danger'
+
+[git_status]
+# Solo muestra el grupo si hay cambios, stash o divergencia con el remoto.
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = 'warning'
+# Cada contador mide archivos, no líneas. Los indicadores pueden solaparse:
+# un archivo puede tener cambios preparados y otros aún sin preparar.
+conflicted = '=${count} ' # Conflictos sin resolver.
+stashed = '≡${count} '   # Entradas guardadas en stash.
+staged = '+${count} '    # Archivos preparados para commit (staging).
+modified = '!${count} '  # Archivos modificados.
+untracked = '?${count} ' # Archivos nuevos sin seguimiento.
+deleted = '×${count} '   # Archivos eliminados.
+renamed = '»${count} '   # Archivos renombrados.
+typechanged = '~${count} ' # Cambios de tipo, por ejemplo archivo a enlace.
+ahead = '↑${count} '     # Commits locales por subir.
+behind = '↓${count} '    # Commits del remoto por bajar.
+diverged = '↑${ahead_count} ↓${behind_count} ' # Ambas direcciones.
+# Usa referencias locales: estos contadores NO ejecutan git fetch.
+
+[nodejs]
+# Versión del runtime Node.js; pnpm no añade un proceso extra al prompt.
+symbol = ' '
+format = '[$symbol($version )]($style)'
+style = 'muted'
+# Detección en el directorio actual, no búsqueda recursiva en sus padres.
+detect_files = ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.node-version', '.nvmrc']
+detect_extensions = ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts']
+detect_folders = ['node_modules']
+
+[python]
+# Muestra Python y el entorno virtual activo; uv.lock identifica proyectos uv.
+# Una .venv existente NO equivale a un entorno activado: para reflejarlo,
+# activa con source .venv/bin/activate; la versión sale del Python en PATH.
+symbol = ' '
+format = '[${symbol}(${version} )(\($virtualenv\) )]($style)'
+style = 'muted'
+python_binary = ['python', 'python3']
+detect_files = ['pyproject.toml', 'uv.lock', '.python-version', 'requirements.txt', 'Pipfile', 'setup.py', 'setup.cfg', 'tox.ini']
+detect_extensions = ['py', 'ipynb']
+detect_folders = ['.venv']
+
+[docker_context]
+# Solo se considera en directorios con estos archivos/carpetas.
+only_with_files = true
+detect_files = ['Dockerfile', 'Containerfile', 'compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml']
+detect_folders = ['.devcontainer']
+symbol = ' '
+format = '[$symbol$context]($style) '
+style = 'muted'
+# Starship oculta default y desktop-linux salvo overrides como DOCKER_CONTEXT.
+# Este módulo muestra contexto, no contenedores en ejecución.
+
+[kubernetes]
+# Activado, pero restringido a indicadores Kubernetes en el directorio actual.
+disabled = false
+detect_files = ['Chart.yaml', 'kustomization.yaml', 'kustomization.yml', '.k8s']
+detect_folders = ['k8s', 'kubernetes', '.kube', 'helm']
+# No detectar cualquier YAML: también existe en proyectos ajenos a Kubernetes.
+# Puedes añadir un archivo vacío .k8s en un directorio para marcarlo.
+symbol = '󱃾 '
+format = '[$symbol$context(/$namespace)]($style) '
+style = 'muted'
+# Lee kubeconfig: el namespace aparece si está definido explícitamente.
+# Los detectores de Docker/Kubernetes no se heredan automáticamente a subcarpetas.
+
+[cmd_duration]
+# Tiempo del último comando a partir de 2000 ms; no muestra milisegundos.
+min_time = 2000
+show_milliseconds = false
+format = '[󱎫 $duration]($style) '
+style = 'warning'
+
+[time]
+# Se utiliza únicamente en right_format; hora local al dibujar el prompt.
+# No es un reloj que se actualice continuamente mientras escribes.
+disabled = false
+time_format = '%R' # HH:MM, formato de 24 horas.
+format = '[$time]($style)'
+style = 'muted'
+
+[line_break]
+# Separa el contexto de la línea donde escribes.
+disabled = false
+
+[character]
+# Indicador discreto y constante: no se añadió indicador de error.
+success_symbol = '[❯](accent)'
+error_symbol = '[❯](accent)'
+# Si usas edición vi, señala el modo normal con otro carácter.
+vimcmd_symbol = '[❮](accent)'
