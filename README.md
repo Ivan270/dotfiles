@@ -1,6 +1,6 @@
 # Dotfiles
 
-Mis archivos para mi propio entorno de desarrollo, optimizado para el desarrollo web (JS/Vue) y la gestión de conocimiento (Obsidian). Construido sobre **Dank Linux (Fedora)** y gestionado con **GNU Stow**.
+Mis archivos para mi propio entorno de desarrollo, optimizado para el desarrollo web (JS/Vue) y la gestión de conocimiento (Obsidian). Construido sobre **Dank Linux (Fedora)** y gestionado con **GNU Stow**, con una configuración de **Starship compartida con macOS** (Bash/Alacritty en Fedora y Zsh/Ghostty en macOS).
 
 ## Herramientas Principales
 
@@ -9,6 +9,7 @@ Mis archivos para mi propio entorno de desarrollo, optimizado para el desarrollo
   - Integración nativa con `obsidian.nvim` (Frontmatter automatizado apagado para evitar colisiones de sintaxis YAML).
   - Formateo automático al guardar mediante `conform.nvim`.
   - Corrección ortográfica bilingüe (ES/EN) nativa.
+- **Prompt:** [Starship](https://starship.rs/), con dos líneas, colores discretos para fondos oscuros e información contextual de desarrollo y DevOps. Configuración comentada en español en [`starship/.config/starship.toml`](starship/.config/starship.toml).
 - **Multiplexor:** Tmux.
   - Diseño brutalista sin bordes ni separadores invasivos.
   - Barra de estado dinámica que hereda nativamente los códigos de color del emulador de terminal.
@@ -22,13 +23,15 @@ Este entorno utiliza `stow` para desplegar la configuración creando enlaces sim
 
 ```text
 .
-├── .bashrc             # Configuración del shell base
-├── .config/
-│   ├── alacritty/      # Emulador de terminal acelerado por GPU (incluye dank-theme)
-│   └── nvim/           # Configuración de LazyVim (tema DMS, Obsidian, formateo y linting)
-├── .prettierrc         # Reglas globales de Prettier (optimizado para Git y Markdown)
-└── .tmux.conf          # Multiplexor con diseño brutalista y responsivo
+├── alacritty/.config/alacritty/  # Terminal y tema de Dank Linux
+├── bash/.bashrc                 # Bash; incluye la inicialización de Starship
+├── global/                     # .prettierrc y .markdownlint.json
+├── nvim/.config/nvim/           # LazyVim y plugins
+├── starship/.config/starship.toml # Prompt compartido entre macOS y Fedora
+└── tmux/.tmux.conf              # Configuración de Tmux
 ```
+
+Cada directorio de primer nivel es un paquete de Stow. Por ejemplo, el paquete `starship` enlaza su configuración en `~/.config/starship.toml`. Las configuraciones de Ghostty y Zsh no están incluidas en este repositorio.
 
 ## Dependencias y Requisitos
 
@@ -39,6 +42,9 @@ Antes de aplicar los dotfiles, será necesario asegurarse de tener instalados lo
 - Tmux
 - Alacritty
 - Git
+- Starship
+- JetBrains Mono Nerd Font instalada y seleccionada en la terminal
+- Para la hora a la derecha en Bash: ble.sh 0.4 o superior
 
 ### Instalando dependencias en Fedora
 
@@ -51,33 +57,119 @@ sudo dnf install nodejs npm
 # Alternativamente, para usar PNPM: npm install -g pnpm
 ```
 
+### Instalando Starship
+
+En Fedora, la [guía oficial de Starship](https://starship.rs/guide/#step-1-install-starship) ofrece el repositorio COPR `atim/starship`:
+
+```bash
+sudo dnf copr enable atim/starship
+sudo dnf install starship
+```
+
+En macOS, con Homebrew instalado:
+
+```bash
+brew install stow starship
+```
+
 ## Tipografía
 
-El entorno requiere JetBrains Mono Nerd Font para renderizar correctamente los íconos técnicos en Alacritty, Tmux y Neovim.
+El entorno requiere JetBrains Mono Nerd Font para renderizar correctamente los íconos técnicos en Alacritty, Ghostty, Starship, Tmux y Neovim. Selecciona la variante **Nerd Font** en las preferencias de la terminal.
+
+En Fedora:
 
 1. Descargar la fuente pre-parcheada desde [Nerd Fonts](https://www.nerdfonts.com/)
 2. Descomprimir los archivos `.ttf` en `~/.local/share/fonts/JetBrainsMono/`
 3. Ejecutar `fc-cache -fv` para actualizar la caché del sistema.
 
-> [!tip]
-> También se puede instalar con el gestor de paquetes `dnf`:
-> [Link al paquete](https://packages.fedoraproject.org/pkgs/jetbrains-mono-fonts/jetbrains-mono-fonts-all/)
+En macOS, abre los archivos `.ttf` con Catálogo Tipográfico e instala la fuente; después selecciónala en Ghostty. La variante estándar de JetBrains Mono no incluye todos los iconos de Nerd Fonts.
 
 ## Instalación GNU Stow
 
-Al ejecutar Stow desde la raíz de este repositorio, se crearán enlaces simbólicos inteligentes de todos los archivos y carpetas directamente hacia el directorio raíz personal (`~`), fusionando los contenidos de `.config` de manera segura.
+Desde la raíz del repositorio, selecciona los paquetes que quieres enlazar en tu directorio personal (`~`). Stow no instala las herramientas: instala primero las dependencias correspondientes.
 
 ```bash
-# 1. Clonar el repositorio en tu directorio home
-git clone git@github.com:TuUsuario/dotfiles.git ~/dotfiles
-
-# 2. Entrar al directorio
+# Si todavía no tienes el repositorio, clónalo en ~/dotfiles.
+git clone git@github.com:Ivan270/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# 3. Eliminar configuraciones existentes para evitar conflictos (ejecutar con precaución)
-rm ~/.bashrc ~/.tmux.conf
-rm -rf ~/.config/alacritty ~/.config/nvim
+# Simular el despliegue en Fedora y revisar posibles conflictos.
+stow --simulate --verbose --ignore='\.DS_Store$' --target="$HOME" alacritty bash global nvim starship tmux
 
-# 4. Desplegar los enlaces simbólicos en tu directorio raíz
-stow -t .
+# Desplegar los paquetes cuando se hayan resuelto los conflictos.
+stow --verbose --ignore='\.DS_Store$' --target="$HOME" alacritty bash global nvim starship tmux
 ```
+
+La opción `--ignore` excluye los archivos `.DS_Store` de macOS presentes en varios paquetes para evitar conflictos entre ellos.
+
+Si ya existen archivos o carpetas en los destinos, respáldalos fuera de esas rutas antes de repetir el despliegue. No es necesario borrar tus configuraciones.
+
+Para instalar **solo el prompt**, tanto en macOS como en Fedora:
+
+```bash
+cd ~/dotfiles
+stow --simulate --verbose --target="$HOME" starship
+stow --verbose --target="$HOME" starship
+```
+
+## Configuración de Starship
+
+El archivo [`starship/.config/starship.toml`](starship/.config/starship.toml) define un prompt de dos líneas con iconos de Nerd Fonts. La primera muestra el contexto; la segunda deja espacio para escribir comandos y muestra la hora a la derecha cuando el shell lo permite.
+
+### Activación del shell
+
+En **Fedora con Bash**, el archivo [`bash/.bashrc`](bash/.bashrc) ya incluye la inicialización. Si instalas únicamente el paquete `starship`, añade esta línea una sola vez al final de tu `~/.bashrc`:
+
+```bash
+eval "$(starship init bash)"
+```
+
+En **macOS con Zsh**, añade esta línea una sola vez al final de tu `~/.zshrc`:
+
+```zsh
+eval "$(starship init zsh)"
+```
+
+Abre una terminal nueva para cargar la inicialización. Estos pasos siguen la [guía de configuración del shell de Starship](https://starship.rs/guide/#step-2-set-up-your-shell-to-use-starship).
+
+### Información del prompt
+
+| Elemento | Comportamiento |
+| --- | --- |
+| Equipo y sesión | Hostname siempre visible; usuario e indicador de conexión en SSH. El usuario también aparece como root o cuando difiere del usuario de sesión. |
+| Directorio | Ruta completa desde la raíz del repositorio; fuera de Git, últimos tres niveles. Un candado indica que no hay permiso de escritura. |
+| Git | Rama, estado de archivos, stash, commits por subir/bajar y operaciones como merge o rebase. En HEAD separado, muestra el hash corto. |
+| Node.js | Versión del runtime en directorios con indicadores de JavaScript/TypeScript, Node o pnpm. |
+| Python | Versión del Python disponible en PATH y nombre del entorno virtual activo; reconoce proyectos con `uv.lock`. |
+| Docker | Contexto en directorios con archivos Docker/Compose/Containerfile o carpeta `.devcontainer`. |
+| Kubernetes | Contexto y namespace explícito en directorios con indicadores como `Chart.yaml`, `kustomization.yaml`, `.k8s` o carpeta `k8s`. |
+| Duración | Tiempo del último comando a partir de dos segundos. |
+| Hora | Hora local en formato `HH:MM`, al dibujar el prompt. |
+
+Los detectores de archivos y carpetas operan sobre el directorio actual; no se heredan automáticamente a subdirectorios. Docker oculta los contextos `default` y `desktop-linux` salvo overrides como `DOCKER_CONTEXT`. Kubernetes requiere un contexto configurado en kubeconfig; puedes marcar un directorio creando un archivo vacío `.k8s`.
+
+pnpm y uv ayudan a detectar proyectos, pero el prompt muestra las versiones de Node.js y Python, no las de sus gestores. Una carpeta `.venv` existente no significa que esté activada: para mostrar el entorno, actívalo con `source .venv/bin/activate`.
+
+### Indicadores de Git
+
+| Indicador | Significado |
+| --- | --- |
+| `+N` | Archivos preparados para commit |
+| `!N` | Archivos modificados |
+| `?N` | Archivos sin seguimiento |
+| `×N` | Archivos eliminados |
+| `»N` | Archivos renombrados |
+| `~N` | Cambios de tipo de archivo |
+| `=N` | Archivos en conflicto |
+| `≡N` | Entradas en stash |
+| `↑N` / `↓N` | Commits por subir / bajar respecto al upstream |
+
+Los indicadores de archivos pueden solaparse y no cuentan líneas. La divergencia usa las referencias locales; el prompt no ejecuta `git fetch`.
+
+### Hora a la derecha y personalización
+
+La hora se configura mediante `right_format = '$time'`. **Zsh lo soporta directamente; Bash requiere ble.sh 0.4 o superior**, instalado e integrado con Starship. El repositorio no instala ni carga ble.sh. Consulta la [documentación del Right Prompt](https://starship.rs/advanced-config/#enable-right-prompt).
+
+Para mantener la hora visible en Bash sin ble.sh, cambia `right_format` a `''` y añade `$time` antes de `$line_break` en `format`. Si prefieres alinearla al extremo derecho de la primera línea, añade `$fill$time` en esa posición.
+
+Cada ajuste está comentado en español dentro del TOML. Para simplificar el prompt, elimina del `format` la variable del módulo que no necesites; para mostrar el hostname solo en SSH, cambia `ssh_only` a `true` en `[hostname]`. Los colores están centralizados en `[palettes.discreta]`.
