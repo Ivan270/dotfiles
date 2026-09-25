@@ -9,6 +9,7 @@ Mis archivos para mi propio entorno de desarrollo, optimizado para el desarrollo
   - Integración nativa con `obsidian.nvim` (Frontmatter automatizado apagado para evitar colisiones de sintaxis YAML).
   - Formateo automático al guardar mediante `conform.nvim`.
   - Corrección ortográfica bilingüe (ES/EN) nativa.
+  - Renderizado de Markdown dentro del editor con `render-markdown.nvim`: encabezados, listas, tablas y bloques de código, con el atajo `<leader>um` para alternar la vista.
 - **Prompt:** [Starship](https://starship.rs/), con dos líneas, colores discretos para fondos oscuros e información contextual de desarrollo y DevOps. Configuración comentada en español en [`starship/.config/starship.toml`](starship/.config/starship.toml).
 - **Multiplexor:** Tmux.
   - Diseño brutalista sin bordes ni separadores invasivos.
@@ -111,6 +112,36 @@ cd ~/dotfiles
 stow --simulate --verbose --target="$HOME" starship
 stow --verbose --target="$HOME" starship
 ```
+
+## Markdown en LazyVim
+
+La configuración de [`render-markdown.nvim`](https://github.com/MeanderingProgrammer/render-markdown.nvim) está en [`nvim/.config/nvim/lua/plugins/render-markdown.lua`](nvim/.config/nvim/lua/plugins/render-markdown.lua). El plugin mejora la visualización de Markdown dentro de Neovim sin modificar el contenido del archivo. Se carga al abrir Markdown, ejecutar `:RenderMarkdown` o utilizar el atajo configurado.
+
+### Instalación y requisitos
+
+Después de desplegar el paquete `nvim` con Stow, abre Neovim y ejecuta:
+
+```vim
+:Lazy install
+:TSInstall markdown markdown_inline
+```
+
+Espera a que finalice la instalación y reinicia Neovim. Los parsers `markdown` y `markdown_inline` son necesarios para el renderizado. La configuración reutiliza `mini.icons` para los iconos y requiere la Nerd Font indicada en la sección de tipografía.
+
+La versión del plugin queda registrada en [`lazy-lock.json`](nvim/.config/nvim/lazy-lock.json); conserva sus cambios junto con la configuración para reproducir la instalación en otros equipos.
+
+### Uso
+
+Abre un archivo Markdown, por ejemplo `README.md`, y utiliza:
+
+| Acción | Atajo o comando |
+| --- | --- |
+| Alternar el renderizado | `<leader>um` (Espacio → u → m en modo normal) |
+| Activar | `:RenderMarkdown enable` |
+| Desactivar | `:RenderMarkdown disable` |
+| Alternar mediante comando | `:RenderMarkdown toggle` |
+
+Con las opciones predeterminadas, el plugin deja ver la sintaxis original al editar y en los elementos bajo el cursor para facilitar los cambios. Para personalizar su apariencia, añade opciones a `opts` en `render-markdown.lua`.
 
 ## Configuración de Starship
 
