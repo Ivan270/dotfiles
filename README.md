@@ -1,11 +1,12 @@
 # Dotfiles
 
-Mis archivos para mi propio entorno de desarrollo, optimizado para el desarrollo web (JS/Vue) y la gestión de conocimiento (Obsidian). Construido sobre **Dank Linux (Fedora)** y gestionado con **GNU Stow**, con una configuración de **Starship compartida con macOS** (Bash/Alacritty en Fedora y Zsh/Ghostty en macOS).
+Mis archivos para desarrollo web (JS/Vue) y gestión de conocimiento (Obsidian), gestionados con **GNU Stow**. Fedora (Dank Linux) usa Bash/Alacritty; macOS usa Zsh/Ghostty. Ambos comparten Neovim, Tmux, Starship y las reglas de formato.
 
 ## Herramientas Principales
 
 - **Tipografía Base:** JetBrains Mono Nerd Font para ligaduras de código e iconografía limpia en la terminal.
 - **Editor:** [LazyVim](https://www.lazyvim.org/) (Neovim).
+  - Tema estable `tokyonight-night` en ambos equipos, independiente de Dank.
   - Integración nativa con `obsidian.nvim` (Frontmatter automatizado apagado para evitar colisiones de sintaxis YAML).
   - Formateo automático al guardar mediante `conform.nvim`.
   - Corrección ortográfica bilingüe (ES/EN) nativa.
@@ -24,15 +25,24 @@ Este entorno utiliza `stow` para desplegar la configuración creando enlaces sim
 
 ```text
 .
-├── alacritty/.config/alacritty/  # Terminal y tema de Dank Linux
+├── alacritty/.config/alacritty/  # Terminal; Dank genera el tema localmente
 ├── bash/.bashrc                 # Bash; incluye la inicialización de Starship
+├── ghostty/.config/ghostty/config # Terminal de macOS
 ├── global/                     # .prettierrc y .markdownlint.json
 ├── nvim/.config/nvim/           # LazyVim y plugins
+├── scripts/dotfiles             # Despliegue por perfil o paquete
 ├── starship/.config/starship.toml # Prompt compartido entre macOS y Fedora
-└── tmux/.tmux.conf              # Configuración de Tmux
+├── tmux/.tmux.conf              # Configuración de Tmux
+└── zsh/.zshrc                   # Zsh, Oh My Zsh y Starship
 ```
 
-Cada directorio de primer nivel es un paquete de Stow. Por ejemplo, el paquete `starship` enlaza su configuración en `~/.config/starship.toml`. Las configuraciones de Ghostty y Zsh no están incluidas en este repositorio.
+Cada directorio de aplicación es un paquete de Stow. `scripts/` contiene herramientas del repositorio y no se despliega. Por ejemplo, `starship` enlaza su configuración en `~/.config/starship.toml`.
+
+| Perfil | Paquetes |
+| --- | --- |
+| `common` | `global`, `nvim`, `starship`, `tmux` |
+| `fedora` | Compartidos + `bash`, `alacritty` |
+| `macos` | Compartidos + `zsh`, `ghostty` |
 
 ## Dependencias y Requisitos
 
@@ -70,8 +80,13 @@ sudo dnf install starship
 En macOS, con Homebrew instalado:
 
 ```bash
-brew install stow starship
+brew install stow starship neovim tmux node ripgrep fd uv
+brew install --cask ghostty font-jetbrains-mono-nerd-font
 ```
+
+Zsh conserva la integración con [Oh My Zsh](https://ohmyz.sh/). Para reproducirla instala también sus plugins externos `zsh-autosuggestions` y `zsh-syntax-highlighting` en `${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/`, siguiendo sus instrucciones oficiales. Si Oh My Zsh no está instalado, se usan las completaciones básicas de Zsh y Starship. Las integraciones con `uv` y Starship solo se cargan si están instalados.
+
+Para Neovim, instala también `ripgrep`, `fd` y un compilador C (en Fedora: `sudo dnf install ripgrep fd-find gcc make`; en macOS: las Command Line Tools de Xcode). Ejecuta `:checkhealth` para comprobar las dependencias de los extras que utilices. Stow y el script no instalan aplicaciones ni plugins del shell.
 
 ## Tipografía
 
@@ -95,13 +110,19 @@ git clone git@github.com:Ivan270/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # Simular el despliegue en Fedora y revisar posibles conflictos.
-stow --simulate --verbose --ignore='\.DS_Store$' --target="$HOME" alacritty bash global nvim starship tmux
+./scripts/dotfiles check --profile fedora
 
 # Desplegar los paquetes cuando se hayan resuelto los conflictos.
-stow --verbose --ignore='\.DS_Store$' --target="$HOME" alacritty bash global nvim starship tmux
+./scripts/dotfiles apply --profile fedora
+
+# En el Mac:
+./scripts/dotfiles check --profile macos
+./scripts/dotfiles apply --profile macos
 ```
 
-La opción `--ignore` excluye los archivos `.DS_Store` de macOS presentes en varios paquetes para evitar conflictos entre ellos.
+Sin `--profile` ni `--package`, el script detecta Fedora o macOS. Usa `--target DIRECTORIO` para probar en otro directorio existente. Es compatible con Bash 3.2 de macOS.
+
+El despliegue usa `--restow --no-folding`: los directorios de destino son reales y cada archivo de configuración es un enlace. Así, los archivos generados por las aplicaciones permanecen fuera del repositorio. Se excluyen temas generados, `.DS_Store` y archivos temporales tanto de Git como de Stow.
 
 Si ya existen archivos o carpetas en los destinos, respáldalos fuera de esas rutas antes de repetir el despliegue. No es necesario borrar tus configuraciones.
 
@@ -109,9 +130,47 @@ Para instalar **solo el prompt**, tanto en macOS como en Fedora:
 
 ```bash
 cd ~/dotfiles
-stow --simulate --verbose --target="$HOME" starship
-stow --verbose --target="$HOME" starship
+./scripts/dotfiles check --package starship
+./scripts/dotfiles apply --package starship
 ```
+
+Puedes repetir `--package`, por ejemplo `--package tmux --package starship`. No se combina con `--profile`.
+
+### Actualizar un dotfile
+
+Edita el archivo en este repositorio o mediante su enlace en `$HOME`, revisa `git diff` y realiza `commit/push`. En el otro equipo:
+
+```bash
+git pull --ff-only
+tmux source-file ~/.tmux.conf  # Si cambió Tmux y tienes una sesión abierta.
+```
+
+Para modificaciones de contenido, los enlaces existentes ya reflejan los cambios. Si se añaden, eliminan o mueven archivos, vuelve a desplegar el paquete:
+
+```bash
+./scripts/dotfiles check --package tmux
+./scripts/dotfiles apply --package tmux
+```
+
+Reabre Neovim o la terminal para cargar sus cambios. Mantén `lazy-lock.json` y `lazyvim.json` versionados; tras sincronizar, `:Lazy restore` restaura las versiones del lockfile. Usa `:Lazy update` cuando quieras actualizar plugins deliberadamente y revisa/commitea el lockfile resultante.
+
+### Migrar desde la estructura anterior
+
+El primer `apply` convierte los enlaces de directorios completos en enlaces por archivo. Antes de actualizar, respalda cualquier archivo local creado dentro de esos directorios, en particular `~/.config/alacritty/dank-theme.toml`, fuera del repositorio. Tras `apply`, devuelve el tema a esa ruta: debe ser un archivo local, no un enlace al repositorio.
+
+En macOS, Ghostty se instala ahora en `~/.config/ghostty/config` (antes el paquete contenía `ghostty/config.ghostty`, que Stow habría enlazado incorrectamente como `~/config.ghostty`). Revisa y retira ese enlace antiguo si existe. Respalda también cualquier configuración previa en `~/.config/ghostty/` y `~/Library/Application Support/com.mitchellh.ghostty/`; evita mantener una segunda configuración activa que sobrescriba la del repositorio. El script informa de conflictos con archivos existentes sin adoptarlos ni sobrescribirlos.
+
+### Dank después de reinstalar Fedora
+
+1. Instala DankMaterialShell con tu entorno de escritorio y aplica el perfil `fedora`.
+2. Activa la integración de colores de Alacritty en Dank y regenera el tema al seleccionar tu fondo/colores.
+3. Comprueba que se haya creado `~/.config/alacritty/dank-theme.toml`.
+
+Alacritty importa ese archivo si existe; si falta, utiliza sus colores predeterminados. El tema generado no se versiona. Neovim usa Tokyo Night y no necesita la integración de Neovim de Dank; puedes desactivarla en sus ajustes. Los archivos DMS que regenere quedan locales y no se despliegan con Stow. Los ajustes completos del escritorio Dank y el fondo de pantalla no se respaldan con este repositorio.
+
+### Reglas globales de formato
+
+Prettier usa `printWidth: 80` y conserva los saltos de los párrafos Markdown con `proseWrap: "preserve"`. `~/.prettierrc` y `~/.markdownlint.json` proporcionan reglas de respaldo para proyectos bajo tu directorio personal cuando sus herramientas las descubren; los proyectos con configuración propia controlan sus reglas. No guardes configuración de proyectos particulares en estos archivos globales.
 
 ## Markdown en LazyVim
 

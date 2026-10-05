@@ -7,3 +7,8 @@
 *~
 *.bak
 *.orig
+
+# Resultados locales de Dank/Matugen (no son la fuente de configuración).
+alacritty/.config/alacritty/dank-theme.toml
+nvim/.config/nvim/colors/dms.lua
+nvim/.config/nvim/lua/lualine/themes/dms.lua

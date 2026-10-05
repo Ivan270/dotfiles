@@ -6,6 +6,7 @@
 
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="" # Starship proporciona el prompt.
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time Oh My Zsh is loaded, in which case,
@@ -106,7 +107,12 @@ plugins=(
     zsh-syntax-highlighting
 )
 
-source $ZSH/oh-my-zsh.sh
+if [[ -r "$ZSH/oh-my-zsh.sh" ]]; then
+    source "$ZSH/oh-my-zsh.sh"
+else
+    autoload -Uz compinit
+    compinit
+fi
 
 # User configuration
 
@@ -138,7 +144,10 @@ source $ZSH/oh-my-zsh.sh
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
 
-. "$HOME/.local/bin/env"
-eval "$(uv generate-shell-completion zsh)"
-eval "$(uv generate-shell-completion zsh)"
-eval "$(starship init zsh)"
+[[ -r "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+if command -v uv >/dev/null 2>&1; then
+    eval "$(uv generate-shell-completion zsh)"
+fi
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+fi

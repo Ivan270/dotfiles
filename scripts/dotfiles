@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Compatible con Bash 3.2 (macOS) y Bash en Fedora.
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Uso: scripts/dotfiles <check|apply> [--profile fedora|macos|common]
+                                   [--package PAQUETE ...] [--target DIRECTORIO]
+
+check: simula el despliegue; apply: actualiza los enlaces con GNU Stow.
+Selecciona un perfil O uno o varios paquetes. Sin selección se detecta el SO.
+Paquetes: alacritty bash ghostty global nvim starship tmux zsh.
+El destino predeterminado es $HOME y debe existir.
+EOF
+}
+
+die() { printf '%s\n' "$*" >&2; exit 1; }
+
+action=${1:-}
+case "$action" in
+    -h|--help) usage; exit 0 ;;
+    check|apply) shift ;;
+    *) usage >&2; exit 1 ;;
+esac
+
+repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+target=$HOME
+profile=
+packages=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profile|--package|--target)
+            [[ $# -ge 2 && -n "$2" ]] || die "Falta valor para $1"
+            case "$1" in
+                --profile) profile=$2 ;;
+                --package) packages+=("$2") ;;
+                --target) target=$2 ;;
+            esac
+            shift 2
+            ;;
+        -h|--help) usage; exit 0 ;;
+        *) die "Opción desconocida: $1" ;;
+    esac
+done
+
+[[ -d "$target" ]] || die "El destino no existe: $target"
+target=$(cd -- "$target" && pwd -P)
+[[ "$target" != "$repo" && "$target" != "$repo/"* ]] || die "El destino debe estar fuera del repositorio"
+if [[ ${#packages[@]} -gt 0 ]]; then
+    [[ -z "$profile" ]] || die "Usa --profile o --package, no ambos"
+else
+    if [[ -z "$profile" ]]; then
+        case "$(uname -s)" in
+            Darwin) profile=macos ;;
+            Linux)
+                [[ -r /etc/os-release ]] || die "Selecciona un perfil explícitamente"
+                . /etc/os-release
+                [[ "${ID:-}" == fedora ]] || die "Selecciona un perfil explícitamente"
+                profile=fedora
+                ;;
+            *) die "Selecciona un perfil explícitamente" ;;
+        esac
+    fi
+    packages=(global nvim starship tmux)
+    case "$profile" in
+        fedora) packages+=(bash alacritty) ;;
+        macos) packages+=(zsh ghostty) ;;
+        common) ;;
+        *) die "Perfil desconocido: $profile" ;;
+    esac
+fi
+
+for package in "${packages[@]}"; do
+    case "$package" in
+        alacritty|bash|ghostty|global|nvim|starship|tmux|zsh) ;;
+        *) die "Paquete desconocido: $package" ;;
+    esac
+done
+command -v stow >/dev/null 2>&1 || die "Instala GNU Stow antes de continuar"
+
+# --no-folding mantiene directorios reales para los archivos generados locales.
+# Las exclusiones de Git no afectan a Stow: se excluyen también aquí.
+args=(--dir="$repo" --target="$target" --verbose --no-folding --restow
+    '--ignore=\.DS_Store$' '--ignore=\._.*' '--ignore=.*\.(swp|swo|bak|orig)$'
+    '--ignore=.*~$' '--ignore=dank-theme\.toml$' '--ignore=dms\.lua$')
+cd -- "$repo"
+if [[ "$action" == check ]]; then
+    exec stow --simulate "${args[@]}" "${packages[@]}"
+fi
+# Revisar todos los paquetes antes de modificar enlaces.
+stow --simulate "${args[@]}" "${packages[@]}"
+exec stow "${args[@]}" "${packages[@]}"

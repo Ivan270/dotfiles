@@ -6,10 +6,19 @@ if [ -f /etc/bashrc ]; then
 fi
 
 # User specific environment
-if ! [[ "$PATH" =~ "$HOME/.local/bin:$HOME/bin:" ]]; then
-    PATH="$HOME/.local/bin:$HOME/bin:$PATH"
-fi
+for dir in "$HOME/bin" "$HOME/.local/bin" "$HOME/.opencode/bin"; do
+    if [ -d "$dir" ]; then
+        case ":$PATH:" in
+            *":$dir:"*) ;;
+            *) PATH="$dir:$PATH" ;;
+        esac
+    fi
+done
+unset dir
 export PATH
+
+# El resto de la configuración es exclusivo de shells interactivos.
+[[ $- == *i* ]] || return
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
 # export SYSTEMD_PAGER=
@@ -24,4 +33,6 @@ if [ -d ~/.bashrc.d ]; then
 fi
 unset rc
 
-eval "$(starship init bash)"
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init bash)"
+fi

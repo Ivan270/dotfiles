@@ -1,4 +1,6 @@
 [general]
+# Dank genera este archivo localmente. Si no existe, Alacritty lo omite
+# y utiliza sus colores predeterminados.
 import = [
   "~/.config/alacritty/dank-theme.toml"
 ]
