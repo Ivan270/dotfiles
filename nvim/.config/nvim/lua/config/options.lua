@@ -3,3 +3,5 @@
 -- Add any additional options here
 vim.opt.spelllang = { "en", "es" }
 vim.opt.spell = true
+
+vim.g.lazyvim_rust_diagnostics = "rust-analyzer"
